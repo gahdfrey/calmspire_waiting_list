@@ -31,7 +31,7 @@ export const addRegistration = async (formData) => {
             throw new Error("Failed to add registration to google spreadsheet")
         }
 
-        return {successMessage: `Success! You have been successfully joined our waiting list!`}
+        return {successMessage: `Success! You have joined our waiting list.`}
 
     } catch (error) {
         return {errorMessage: `Ooops! There was a problem with your registration!`}
