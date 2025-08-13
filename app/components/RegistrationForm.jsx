@@ -54,12 +54,12 @@ export const RegistrationForm = () => {
       )}
 
       {submitSuccess && (
-        <div className="w-[90%] max-w-[370px] mx-auto px-8 py-6 space-y-4 rounded-lg text-white bg-[#ff8360] ring-2 ring-green-500 font-mono">
+         <div className="w-[90%] max-w-[370px] mx-auto px-8 py-6 space-y-4 rounded-lg text-white bg-[#ff8360] ring-2 ring-green-500 font-mono text-center">
           {submitSuccess}
         </div>
       )}
       {submitError && (
-        <div className="w-[90%] max-w-[370px] mx-auto px-8 py-6 space-y-4 rounded-lg text-white bg-[#a59072]/80 ring-2 ring-red-500 font-mono">
+        <div className="w-[90%] max-w-[370px] mx-auto px-8 py-6 space-y-4 rounded-lg text-white bg-[#a59072]/80 ring-2 ring-red-500 font-mono text-center">
           {submitError}
         </div>
       )}
