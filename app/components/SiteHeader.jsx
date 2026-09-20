@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HeartPulse, Menu, X } from "./icons";
 
 const links = [
@@ -14,6 +14,7 @@ const links = [
 export const SiteHeader = () => {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const headerRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -29,12 +30,25 @@ export const SiteHeader = () => {
       if (e.key === "Escape") setOpen(false);
     };
 
+    // Anything outside the header dismisses the menu. pointerdown rather than
+    // click, so the menu is already closing as the finger lands — and the
+    // toggle button lives inside the header, so its own handler still owns it.
+    const onPointerDown = (e) => {
+      if (!headerRef.current?.contains(e.target)) setOpen(false);
+    };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
   }, [open]);
 
   return (
     <header
+      ref={headerRef}
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
         scrolled || open
           ? "border-b border-slate-200/80 bg-white/85 backdrop-blur-xl"
