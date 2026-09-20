@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "autoPort": true,
+  "configurations": [
+    {
+      "name": "carevault",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "carevault-attach",
+      "url": "http://localhost:3000",
+      "port": 3000
+    }
+  ]
+}
