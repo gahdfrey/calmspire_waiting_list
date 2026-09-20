@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { addRegistration } from "../action";
 import { ArrowRight, Check } from "./icons";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// How long the confirmation stays up before the form returns, ready for the
+// next person — useful on a shared terminal at a stand or reception desk.
+const SUCCESS_RESET_MS = 5000;
 
 const nextSteps = [
   "We review your facility and confirm fit for the beta cohort.",
@@ -16,6 +20,15 @@ export const OnboardingForm = () => {
   const [isPending, setIsPending] = useState(false);
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState("");
+
+  // Return to a blank form after the confirmation has been read, so the panel
+  // is never left stuck on someone else's result.
+  useEffect(() => {
+    if (!submitted) return;
+
+    const timer = setTimeout(() => setSubmitted(null), SUCCESS_RESET_MS);
+    return () => clearTimeout(timer);
+  }, [submitted]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,7 +62,11 @@ export const OnboardingForm = () => {
 
   if (submitted) {
     return (
-      <div className="rise rounded-2xl border border-slate-200/80 bg-white p-8 shadow-[0_24px_64px_-28px_rgba(15,23,43,0.28)] sm:p-10">
+      <div
+        role="status"
+        aria-live="polite"
+        className="rise rounded-2xl border border-slate-200/80 bg-white p-8 shadow-[0_24px_64px_-28px_rgba(15,23,43,0.28)] sm:p-10"
+      >
         <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-600/20">
           <Check className="h-6 w-6" />
         </span>

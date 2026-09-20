@@ -761,7 +761,7 @@ export default function Home() {
 
         {/* ------------------------------------------------------------ join */}
         <section
-          id="join"
+          id="beta-onboarding"
           className="scroll-mt-16 border-y border-slate-200/70 bg-slate-50"
         >
           <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8 lg:py-32">
@@ -804,7 +804,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="lg:pt-4">
+              <div id="join" className="scroll-mt-24 lg:pt-4">
                 <OnboardingForm />
               </div>
             </div>
