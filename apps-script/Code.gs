@@ -6,17 +6,37 @@
  * 1. Open the target Google Sheet → Extensions → Apps Script.
  * 2. Paste this file over the default Code.gs and Save.
  * 3. Run `setupSheet` once from the editor and accept the permission prompt.
- *    This writes/repairs the header row.
- * 4. Deploy → New deployment → type "Web app".
+ * 4. Deploy → Manage deployments → edit the existing deployment →
+ *    Version: "New version" → Deploy. (Keeps the same /exec URL.)
  *      Execute as:        Me
  *      Who has access:    Anyone
- * 5. Copy the /exec URL into the app's environment as
- *    NEXT_PUBLIC_GOOGLE_SCRIPT_URL.
+ * 5. Copy the /exec URL into NEXT_PUBLIC_GOOGLE_SCRIPT_URL, in .env.local
+ *    locally and in Vercel → Settings → Environment Variables.
+ *
+ * Open the /exec URL in a browser at any time: it reports which spreadsheet
+ * and tab this script is actually writing to, plus current row counts.
  *
  * The web app receives this JSON body from app/action.js:
  *   { doctorName, email, hospitalName, submittedAt }
  */
 
+// The spreadsheet to write to.
+//
+// Leave this blank. If the script was created from inside the target sheet
+// (Extensions -> Apps Script) it is already bound to it and nothing is needed.
+//
+// Only if the script is standalone, or you want to target a different
+// spreadsheet, set the id WITHOUT committing it: in the Apps Script editor go
+// to Project Settings -> Script Properties and add
+//   SPREADSHEET_ID = <the id from /spreadsheets/d/<THIS PART>/edit>
+// It is read below. This repository is public, so the id does not belong in
+// this file.
+
+// The exact tab to write to, pinned by gid (the #gid= in the sheet URL).
+// Set to null to fall back to SHEET_NAME instead.
+var TARGET_GID = 1427530553;
+
+// Used only when TARGET_GID is null or no tab matches it.
 var SHEET_NAME = 'Beta Waiting List';
 
 var HEADERS = [
@@ -26,41 +46,75 @@ var HEADERS = [
   'Hospital name',
 ];
 
-/** Returns the target sheet, creating and titling it if necessary. */
-function getSheet_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(SHEET_NAME);
+/** The spreadsheet this script writes to. */
+function getSpreadsheet_() {
+  var id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
 
-  if (!sheet) {
-    sheet = ss.getSheets()[0];
-    // Only rename an untouched default sheet; never clobber a named one.
-    if (sheet.getName() === 'Sheet1' && sheet.getLastRow() === 0) {
-      sheet.setName(SHEET_NAME);
-    } else {
-      sheet = ss.insertSheet(SHEET_NAME);
+  if (id) {
+    return SpreadsheetApp.openById(id.trim());
+  }
+
+  // Bound script: the spreadsheet this project lives inside.
+  var active = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!active) {
+    throw new Error(
+      'This script is not bound to a spreadsheet. Add a SPREADSHEET_ID script ' +
+      'property (Project Settings -> Script Properties) with the target sheet id.'
+    );
+  }
+
+  return active;
+}
+
+/** Returns the exact tab to append to. */
+function getSheet_() {
+  var ss = getSpreadsheet_();
+  var sheets = ss.getSheets();
+
+  // Prefer the tab pinned by gid — this is the tab in the URL you have open.
+  if (TARGET_GID !== null && TARGET_GID !== undefined) {
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === TARGET_GID) {
+        return sheets[i];
+      }
     }
   }
 
-  return sheet;
+  // Otherwise fall back to a tab by name, creating it if it does not exist.
+  var named = ss.getSheetByName(SHEET_NAME);
+
+  if (named) {
+    return named;
+  }
+
+  return ss.insertSheet(SHEET_NAME);
 }
 
-/** Writes the header row and formats the sheet. Safe to run more than once. */
+/**
+ * Writes the header row and formats the sheet.
+ * Safe to run repeatedly: it only writes headers into an empty sheet, so it
+ * will never overwrite rows that are already there.
+ */
 function setupSheet() {
   var sheet = getSheet_();
 
-  sheet.getRange(1, 1, 1, HEADERS.length)
-    .setValues([HEADERS])
-    .setFontWeight('bold')
-    .setBackground('#0f172b')
-    .setFontColor('#ffffff');
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, HEADERS.length)
+      .setValues([HEADERS])
+      .setFontWeight('bold')
+      .setBackground('#0f172b')
+      .setFontColor('#ffffff');
 
-  sheet.setFrozenRows(1);
-  sheet.setColumnWidth(1, 180);
-  sheet.setColumnWidth(2, 220);
-  sheet.setColumnWidth(3, 260);
-  sheet.setColumnWidth(4, 280);
+    sheet.setFrozenRows(1);
+    sheet.setColumnWidth(1, 180);
+    sheet.setColumnWidth(2, 220);
+    sheet.setColumnWidth(3, 260);
+    sheet.setColumnWidth(4, 280);
+  }
 
-  return 'Sheet ready: ' + sheet.getName();
+  return 'Writing to "' + sheet.getName() + '" (gid ' + sheet.getSheetId() +
+    ') in "' + getSpreadsheet_().getName() + '"';
 }
 
 function json_(payload) {
@@ -69,9 +123,37 @@ function json_(payload) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-/** Health check — opening the /exec URL in a browser should show this. */
+/**
+ * Health check and diagnostics. Open the /exec URL in a browser to see which
+ * spreadsheet and tab this script is actually writing to, and how many rows
+ * each tab currently holds. This is the fastest way to answer "where did my
+ * submission go?".
+ */
 function doGet() {
-  return json_({ ok: true, service: 'CareVault beta waiting list' });
+  try {
+    var ss = getSpreadsheet_();
+    var target = getSheet_();
+
+    var tabs = ss.getSheets().map(function (sh) {
+      return {
+        name: sh.getName(),
+        gid: sh.getSheetId(),
+        rows: Math.max(0, sh.getLastRow() - 1),
+        isTarget: sh.getSheetId() === target.getSheetId(),
+      };
+    });
+
+    return json_({
+      ok: true,
+      service: 'CareVault beta waiting list',
+      spreadsheet: { name: ss.getName(), id: ss.getId(), url: ss.getUrl() },
+      writingTo: { name: target.getName(), gid: target.getSheetId() },
+      rowsInTarget: Math.max(0, target.getLastRow() - 1),
+      tabs: tabs,
+    });
+  } catch (err) {
+    return json_({ ok: false, error: String(err) });
+  }
 }
 
 function doPost(e) {

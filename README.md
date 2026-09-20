@@ -45,7 +45,33 @@ To install it:
    *Who has access: Anyone*.
 5. Copy the `/exec` URL into `NEXT_PUBLIC_GOOGLE_SCRIPT_URL`.
 
-Opening the `/exec` URL in a browser returns `{"ok":true,...}` as a health check.
+### Where did my submission go?
+
+Open the `/exec` URL in a browser. It reports exactly which spreadsheet and tab
+the script writes to, and how many rows each tab holds:
+
+```json
+{
+  "ok": true,
+  "spreadsheet": { "name": "...", "url": "..." },
+  "writingTo": { "name": "Beta Waiting List", "gid": 1427530553 },
+  "rowsInTarget": 4,
+  "tabs": [{ "name": "Sheet1", "gid": 0, "rows": 12, "isTarget": false }]
+}
+```
+
+`writingTo` is the answer — if a submission "disappeared", it is in that tab.
+
+The destination is resolved in this order:
+
+1. A `SPREADSHEET_ID` script property, if set (Apps Script editor → Project
+   Settings → Script Properties). Use this only for a standalone script or to
+   target a different spreadsheet. **Do not put the id in `Code.gs`** — this
+   repository is public.
+2. Otherwise the spreadsheet the script is bound to.
+
+Within that spreadsheet it writes to the tab whose gid matches `TARGET_GID`,
+falling back to a tab named by `SHEET_NAME` (created if absent).
 
 > The field names changed from the original version of this app (`firstName`,
 > `lastName`, `phone`, `email`). If you have an older Apps Script deployment, replace it
