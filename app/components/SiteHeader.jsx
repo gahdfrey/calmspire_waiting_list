@@ -22,6 +22,17 @@ export const SiteHeader = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
@@ -64,37 +75,67 @@ export const SiteHeader = () => {
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
+            aria-controls="mobile-menu"
             aria-label={open ? "Close menu" : "Open menu"}
             className="rounded-lg p-2.5 text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
           >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {/* Both icons are stacked and cross-faded, so the swap turns
+                rather than blinks. */}
+            <span className="relative block h-5 w-5">
+              <Menu
+                className={`absolute inset-0 h-5 w-5 transition-all duration-300 ease-out motion-reduce:transition-none ${
+                  open ? "rotate-90 scale-75 opacity-0" : "rotate-0 scale-100 opacity-100"
+                }`}
+              />
+              <X
+                className={`absolute inset-0 h-5 w-5 transition-all duration-300 ease-out motion-reduce:transition-none ${
+                  open ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-75 opacity-0"
+                }`}
+              />
+            </span>
           </button>
         </div>
       </div>
 
-      {open && (
-        <div className="border-t border-slate-200/80 bg-white lg:hidden">
-          <nav className="mx-auto max-w-7xl px-6 py-3">
-            {links.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                className="block rounded-lg px-2 py-2.5 text-[15px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                {l.label}
-              </a>
-            ))}
-            <a
-              href="#join"
-              onClick={() => setOpen(false)}
-              className="mt-2 block rounded-xl bg-blue-600 px-4 py-3 text-center text-[15px] font-semibold text-white sm:hidden"
+      {/* Kept mounted so it can animate. The 0fr -> 1fr grid row expands to
+          the content's natural height without hard-coding one; `inert` keeps
+          the links out of the tab order and the a11y tree while collapsed. */}
+      <div
+        id="mobile-menu"
+        inert={open ? undefined : true}
+        className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none lg:hidden ${
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="min-h-0">
+          <div className="border-t border-slate-200/80 bg-white">
+            <nav
+              className={`mx-auto max-w-7xl px-6 py-3 transition-transform duration-300 ease-out motion-reduce:transition-none ${
+                open ? "translate-y-0" : "-translate-y-1"
+              }`}
             >
-              Request beta access
-            </a>
-          </nav>
+              {links.map((l) => (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className="block rounded-lg px-2 py-2.5 text-[15px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  {l.label}
+                </a>
+              ))}
+              <a
+                href="#join"
+                onClick={() => setOpen(false)}
+                className="mt-2 block rounded-xl bg-blue-600 px-4 py-3 text-center text-[15px] font-semibold text-white sm:hidden"
+              >
+                Request beta access
+              </a>
+            </nav>
+          </div>
         </div>
-      )}
+      </div>
+
     </header>
   );
 };
